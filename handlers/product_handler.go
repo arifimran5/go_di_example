@@ -1,19 +1,25 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"go_di_example/models"
 	"go_di_example/pkg/logger"
+	"go_di_example/services"
 	"net/http"
+	"strconv"
 )
 
 type ProductHandler struct {
-	logger logger.Logger
+	logger         logger.Logger
+	productService services.ProductService
 }
 
-func NewProductHandler(l logger.Logger) *ProductHandler {
+func NewProductHandler(l logger.Logger, service services.ProductService) *ProductHandler {
 	return &ProductHandler{
-		logger: l,
+		logger:         l,
+		productService: service,
 	}
 }
 
@@ -29,21 +35,59 @@ func (h *ProductHandler) HandlerRoutes() http.Handler {
 func (h *ProductHandler) list(w http.ResponseWriter, r *http.Request) {
 	h.logger.Info("Listing products")
 
+	products, err := h.productService.List()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "Listing products")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": products})
 	return
 }
 
 func (h *ProductHandler) get(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idStr)
+
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	product, err := h.productService.Get(id)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, "get product")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"data": product})
 	return
 }
 
 func (h *ProductHandler) create(w http.ResponseWriter, r *http.Request) {
-	h.logger.Info("Creating product")
+	var newProduct models.Product
 
+	if err := json.NewDecoder(r.Body).Decode(&newProduct); err != nil {
+		h.logger.Error("invalid input" + err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	err := h.productService.Create(newProduct)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, "create product")
+	fmt.Fprint(w, "created")
 	return
 }
