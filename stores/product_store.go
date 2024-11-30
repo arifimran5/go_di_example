@@ -51,12 +51,13 @@ func (p *productStore) List() ([]models.Product, error) {
 
 func (p *productStore) Get(id int) (models.Product, error) {
 	var product models.Product
-	err := p.db.QueryRow("select id, name, price, created_at from products where id = ?", id).Scan(&product.Id, &product.Name, &product.Price, &product.CreatedAt)
+	row := p.db.QueryRow("select id, name, price, created_at from products where id = ?", id)
+	err := row.Scan(&product.Id, &product.Name, &product.Price, &product.CreatedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			p.logger.Error("Product not found with id: " + string(id))
-			return product, nil
+			p.logger.Error("Product not found with id: " + string(rune(id)))
+			return product, nil //there are no errors, just the product was not found
 		}
 		p.logger.Error("Error querying product: " + err.Error())
 		return product, err
