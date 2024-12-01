@@ -56,18 +56,18 @@ project-root/
    go mod tidy
    ```
 
-3. Build the application:
+3. Build the application (Linux):
 
    ```bash
    go build -o bin/main ./cmd/main.go
    ```
 
-### Running the Application
+### Running the Application (Linux)
 
 To run the application, execute the following command:
 
 ```bash
-./bin/http-api
+./bin/main
 ```
 
 The API will start on `http://localhost:8080`.
